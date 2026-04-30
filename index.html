@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards App</title>
+<style>
+.set-buttons button:nth-child(1),
+.set-buttons button:nth-child(2),
+.set-buttons button:nth-child(3),
+.set-buttons button:nth-child(4) {
+  font-size: 14px;
+}
+
+#gems-display,
+#fire-display {
+  font-size: 20px;
+  font-weight: bold;
+}
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #a18cd1, #fbc2eb, #8fd3f4);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  width: 90%;
+  max-width: 800px;
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+h1, h2 {
+  text-align: center;
+  color: #333;
+}
+
+.hidden {
+  display: none;
+}
+
+.set {
+  display: flex;
+  align-items: center;
+  background: #f3f3f3;
+  border-radius: 15px;
+  padding: 10px;
+  margin: 10px 0;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.set:hover {
+  background: #e8e8e8;
+}
+
+.set img {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-right: 15px;
+}
+.set-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  width: 90px;
+  margin-left: auto;
+}
+.set-buttons button {
+  height: 40px;
+  font-size: 14px;
+  padding: 6px 8px;
+}
+
+.card-container {
+  perspective: 1000px;
+  margin: 20px 0;
+}
+
+.card {
+  width: 100%;
+  height: 350px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+  cursor: pointer;
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  font-weight: bold;
+  text-align: center;
+  color: #333;
+  overflow: hidden;
+}
+
+.card-front {
+  background: #fff;
+}
+
+.card-back {
+  background: #f0f0f0;
+  transform: rotateY(180deg);
+}
+
+.card-face img {
+  width: 100%;
+  max-height: 250px;
+  margin-bottom: 15px;
+  object-fit: contain;
+}
+
+.answer-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.answer-buttons button {
+  flex: 1;
+  margin: 0 5px;
+  padding: 10px;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.correct {
+  background: #a0e7a0;
+}
+
+.incorrect {
+  background: #f28b82;
+}
+
+.correct:hover {
+  background: #77d677;
+}
+
+.incorrect:hover {
+  background: #e06666;
+}
+
+#score-screen {
+  text-align: center;
+}
+
+#score-screen button {
+  margin: 10px;
+  padding: 12px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: #a18cd1;
+  color: white;
+  transition: 0.3s;
+}
+
+#score-screen button:hover {
+  background: #875fb3;
+}
+
+.card-editor {
+  margin-bottom: 10px;
+}
+
+.card-editor input {
+  display: block;
+  width: 95%;
+  margin-bottom: 5px;
+}
+
+/* bouton Couleur utilise le style par défaut des boutons */
+.btn-color {
+  margin: 0 2px;
+}
+
+/* modification : case couleur 19px par 19px */
+.color-display {
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  vertical-align: middle;
+  margin-left: 5px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div id="home-screen">
+<h1 style="display:flex; align-items:center;">
+  Mes Sets
+  <span id="gems-display" style="margin-left:10px;">💎 0</span>
+<span id="fire-display" style="margin-left:10px;">
+
+  🔥 <span id="fire-days">0</span>
+
+</span>
+  <button id="infoBtn" style="margin-left:auto; font-size:24px; cursor:pointer; border:none; background:none;">*</button>
+</h1>
+
+<button onclick="showSetEditor()">➕ Nouveau set</button>
+<button onclick="document.getElementById('import-file').click()">📥 Importer un set</button>
+<button onclick="exportAllSets()">💾 Exporter tous les sets</button>
+<input type="file" id="import-file" class="hidden" onchange="importSet(event)">
+<div id="sets-list"></div>
+</div>
+
+<div id="info-screen" class="hidden">
+  <h2>Fonctionnalités +++</h2>
+  <div style="white-space: pre-wrap; line-height:1.5; width: 100%; max-width: 700px; margin: 0 auto; padding: 10px; font-size:16px;">
+Pendant que tu pratiques
+• Si tu joues avec un clavier :
+  • Espace → Retourne la carte pour voir la réponse.
+  • F → Indique que tu as mal répondu à la carte.
+  • J → Indique que tu as bien répondu à la carte.
+
+Pendant que tu modifies
+• Enter → Passe à la ligne suivante et crée automatiquement une nouvelle carte.
+• Les couleurs servent à créer des mini-paquets :
+  • Lors du jeu, les cartes d’un mini-paquet ne sont pas mélangées avec les autres cartes.
+• Les couleurs peuvent être choisies :
+  1. Nom en anglais (Red, Blue…)
+  2. Code hexadécimal (#FF0000, #0000FF…)
+  </div>
+  <button onclick="goHome()">🏠 Retour</button>
+
+  <hr>
+
+  <h2>🧊 Gels</h2>
+
+  <button onclick="buyGel()">Acheter 1 🧊 (1000 💎)</button>
+
+  <button onclick="buy2Gels()">Acheter 2 🧊 (1700 💎)</button>
+
+  <p>Tu as : <span id="gel-count">0</span> 🧊 (max 2)</p>
+<hr>
+
+<h2>Code spécial créateur</h2>
+
+<input id="secretCode" placeholder="Tape ton code ici">
+<button onclick="checkCode()">Valider</button>
+</div>
+
+<div id="editor-screen" class="hidden">
+<h2>Créer / Modifier un Set</h2>
+<input type="text" id="set-title" placeholder="Titre du set"><br><br>
+<input type="text" id="set-subject" placeholder="Matière"><br><br>
+<input type="text" id="set-image" placeholder="URL image pour l’accueil">
+<input type="file" accept="image/*" id="set-image-file" style="display:none">
+<button onclick="document.getElementById('set-image-file').click()">📸 Galerie couverture</button><br><br>
+<div id="cards-editor"></div>
+<button onclick="addCardEditor()">➕ Ajouter une carte</button><br><br>
+<button onclick="saveSet()">💾 Sauvegarder</button>
+<button onclick="goHome()">🏠 Accueil</button>
+</div>
+
+<div id="game-screen" class="hidden">
+<h2 id="game-title"></h2>
+<div id="game-cards" class="card-container"></div>
+<div class="answer-buttons">
+<button class="incorrect" onclick="markAnswer(false)">Mauvais</button>
+<button class="correct" onclick="markAnswer(true)">Bon</button>
+</div>
+</div>
+
+<div id="score-screen" class="hidden">
+<h2>Résultat</h2>
+<p id="final-score"></p>
+<button onclick="restartAll()">🔄 Recommencer tout</button>
+<button onclick="restartErrors()">❌ Rejouer erreurs</button>
+<button onclick="goHome()">🏠 Accueil</button>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBfB2J2Tk-QBeTCKEIC4ybYkpiwymavDOU",
+  authDomain: "flashcard-2c124.firebaseapp.com",
+  projectId: "flashcard-2c124",
+  storageBucket: "flashcard-2c124.firebasestorage.app",
+  messagingSenderId: "874120400032",
+  appId: "1:874120400032:web:580f1de61498e0134b4dc5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ID simple (tu peux changer plus tard)
+const USER_ID = "player1";
+const ref = doc(db, "users", USER_ID);
+let sets = [];
+let currentSet = null;
+let currentCards = [];
+let currentIndex = 0;
+let errors = [];
+let voyageMode = JSON.parse(localStorage.getItem("voyageMode")) || false;
+let voyageProtectUntil = parseInt(localStorage.getItem("voyageProtectUntil")) || 0;
+async function saveData() {
+  await setDoc(ref, {
+    gems,
+    gels,
+    fireDays,
+    lastLesson,
+    voyageMode,
+    voyageProtectUntil,
+    sets
+  }, { merge: true });
+}
+
+function saveSets(){ localStorage.setItem("sets",JSON.stringify(sets)); }
+function goHome(){ document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden")); document.getElementById("home-screen").classList.remove("hidden"); displaySets(); }
+
+function showSetEditor(setIndex=null){
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("editor-screen").classList.remove("hidden");
+  document.getElementById("cards-editor").innerHTML = "";
+  document.getElementById("set-image-file").onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{ document.getElementById("set-image").value = ev.target.result; };
+    reader.readAsDataURL(file);
+  };
+  if(setIndex!==null){
+    currentSet = sets[setIndex];
+    document.getElementById("set-title").value = currentSet.title;
+    document.getElementById("set-subject").value = currentSet.subject;
+    document.getElementById("set-image").value = currentSet.image;
+    currentSet.cards.forEach(c=>addCardEditor(c.question,c.answer,c.image,c.color,c.number));
+  } else {
+    currentSet = null;
+  }
+}
+
+function addCardEditor(q='',a='',img='',color="",number=""){
+  const div=document.createElement("div");
+  div.className="card-editor";
+  div.innerHTML=`
+    <input type="text" placeholder="Question" value="${q}">
+    <input type="text" placeholder="Réponse" value="${a}">
+    <input type="text" placeholder="URL image ou vide" value="${img}">
+    <input type="file" accept="image/*" class="img-upload" style="display:none">
+    <button class="btn-photo">📸 Galerie</button>
+    <button class="btn-color">Couleur</button>
+    <span class="color-display" style="background:${color || '#ddd'}">${number}</span>
+    <button class="btn-del-card">🗑️ Supprimer cette carte</button>
+    <hr>
+  `;
+  document.getElementById("cards-editor").appendChild(div);
+// 🎯 Gestion ENTER intelligente
+const inputs = div.querySelectorAll("input");
+
+inputs[0].addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    inputs[1].focus();
+  }
+});
+
+inputs[1].addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    inputs[2].focus();
+  }
+});
+
+inputs[2].addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    addCardEditor();
+
+setTimeout(() => {
+
+  const allCards = document.querySelectorAll("#cards-editor .card-editor");
+
+  const lastCard = allCards[allCards.length - 1];
+
+  lastCard.querySelector("input").focus();
+
+}, 0);
+  }
+});
+
+  const imgInput = div.querySelector(".img-upload");
+  const urlInput = div.children[2];
+  div.querySelector(".btn-photo").onclick = ()=> imgInput.click();
+  imgInput.onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{ urlInput.value = ev.target.result; };
+    reader.readAsDataURL(file);
+  };
+
+  const colorBtn = div.querySelector(".btn-color");
+  const colorDisplay = div.querySelector(".color-display");
+  colorBtn.onclick = ()=>{
+    const c = prompt("Choisis une couleur (ex: #ff0000)", colorDisplay.style.background) || colorDisplay.style.background;
+    const n = prompt("Entrez le chiffre pour cette couleur","16") || "16";
+    colorDisplay.style.background = c;
+    colorDisplay.textContent = n;
+  };
+
+  div.querySelector(".btn-del-card").onclick = ()=> div.remove();
+}
+
+function saveSet(){
+  const title = document.getElementById("set-title").value;
+  const subject = document.getElementById("set-subject").value;
+  const image = document.getElementById("set-image").value;
+  const cards = [];
+  document.querySelectorAll("#cards-editor > .card-editor").forEach(div=>{
+    const q = div.children[0].value;
+    const a = div.children[1].value;
+    const img = div.children[2].value;
+    const rawColor = div.querySelector(".color-display").style.background;
+const color = (rawColor === "rgb(221, 221, 221)" || rawColor === "#ddd") ? "" : rawColor;
+    const number = div.querySelector(".color-display").textContent;
+    if(q && a) cards.push({question:q, answer:a, image:img, color:color, number:number});
+  });
+  if(currentSet){ currentSet.title = title; currentSet.subject = subject; currentSet.image = image; currentSet.cards = cards; }
+  else{ sets.push({title,subject,image,cards}); }
+  saveSets();
+  currentSet = null;
+  goHome();
+}
+
+function displaySets(){
+  const list = document.getElementById("sets-list");
+  list.innerHTML="";
+  sets.forEach((s,i)=>{
+    const div = document.createElement("div");
+    div.className="set";
+    div.innerHTML = `<img src="${s.image||'https://via.placeholder.com/60'}"><div><strong>${s.title}</strong><br><small>${s.subject}</small></div>`;
+    div.onclick = ()=> startGame(i);
+
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.className="set-buttons";
+    const editBtn = document.createElement("button");
+    editBtn.textContent="✏️";
+    editBtn.onclick = e=>{ e.stopPropagation(); showSetEditor(i); };
+    const delBtn = document.createElement("button");
+    delBtn.textContent="🗑️";
+    delBtn.onclick = e=>{ e.stopPropagation(); deleteSet(i); };
+    const shareBtn = document.createElement("button");
+    shareBtn.textContent="📤";
+    shareBtn.onclick = async e=>{
+      e.stopPropagation();
+      const jsonStr = JSON.stringify(sets[i],null,2);
+      const blob = new Blob([jsonStr], {type:"application/json"});
+      const file = new File([blob], `${sets[i].title.replace(/[^a-z0-9]/gi,"_")||"set"}.json`, {type:"application/json"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file], title:sets[i].title, text:"Voici mon set de flashcards !"});
+          alert("✅ Set partagé ou enregistré avec succès !");
+          return;
+        } catch(err){ console.log(err); }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href=url;
+      a.download = `${sets[i].title.replace(/[^a-z0-9]/gi,"_")||"set"}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert("✅ Fichier téléchargé avec succès !");
+    };
+const wordBtn = document.createElement("button");
+wordBtn.textContent = "📄";
+wordBtn.onclick = e => {
+  e.stopPropagation();
+  generateWord(i);
+};
+buttonsDiv.appendChild(wordBtn);
+ buttonsDiv.appendChild(editBtn);
+    buttonsDiv.appendChild(delBtn);
+    buttonsDiv.appendChild(shareBtn);
+    div.appendChild(buttonsDiv);
+    list.appendChild(div);
+  });
+}
+
+function deleteSet(i){
+  if(confirm("Supprimer ce set ?")){
+    sets.splice(i,1);
+    saveSets();
+    displaySets();
+  }
+}
+
+function startGame(i){
+streak = 0;
+sessionGems = 0;
+updateGemsUI();
+  currentSet = sets[i];
+  const blocks = [];
+  const colorGroups = {};
+  currentSet.cards.forEach(c=>{
+    if(c.color){
+      if(!colorGroups[c.color]) colorGroups[c.color]=[];
+      colorGroups[c.color].push(c);
+    }
+  });
+  for(const color in colorGroups){
+    const group = colorGroups[color].slice();
+    group.sort((a,b)=>parseInt(a.number||0)-parseInt(b.number||0));
+    blocks.push(group);
+  }
+  const noColorCards = currentSet.cards.filter(c=>!c.color);
+  if(noColorCards.length>0){
+    for(let j=noColorCards.length-1; j>0; j--){
+      const k = Math.floor(Math.random()*(j+1));
+      [noColorCards[j], noColorCards[k]] = [noColorCards[k], noColorCards[j]];
+    }
+    blocks.push(noColorCards);
+  }
+  for(let j=blocks.length-1;j>0;j--){
+    const k=Math.floor(Math.random()*(j+1));
+    [blocks[j],blocks[k]]=[blocks[k],blocks[j]];
+  }
+  currentCards=[];
+  blocks.forEach(block=>currentCards.push(...block));
+
+  currentIndex=0;
+  errors=[];
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("game-screen").classList.remove("hidden");
+  document.getElementById("game-title").textContent=currentSet.title;
+  showCard();
+}
+
+function showCard(){
+  const card = currentCards[currentIndex];
+  const gameCards = document.getElementById("game-cards");
+  gameCards.innerHTML="";
+  const div = document.createElement("div");
+  div.className="card";
+  div.innerHTML=`
+    <div class="card-face card-front">
+      ${card.image?`<img src="${card.image}">`:""}
+      <div>${card.question}</div>
+    </div>
+    <div class="card-face card-back">
+      ${card.image?`<img src="${card.image}">`:""}
+      <div>${card.answer}</div>
+    </div>
+  `;
+  div.onclick = ()=>flipCard();
+  gameCards.appendChild(div);
+}
+
+function flipCard(){ document.querySelector(".card").classList.toggle("flipped"); }
+
+function markAnswer(correct){
+if(correct){
+  streak++;
+  gems++;
+  sessionGems++;
+
+  if(streak === 10){
+    gems -= 10;
+    sessionGems -= 10;
+    gems += 25;
+    sessionGems += 25;
+  }
+} else {
+  streak = 0;
+}
+
+saveData();
+updateGemsUI();
+  if(!correct) errors.push(currentCards[currentIndex]);
+  currentIndex++;
+  if(currentIndex<currentCards.length) showCard();
+  else endGame();
+}
+
+function endGame(){
+
+  checkFireStreak();
+
+  const today = new Date().toDateString();
+  const last = new Date(lastLesson).toDateString();
+
+  // 🔥 si nouveau jour → +1 streak
+  if(last !== today){
+    fireDays++;
+  }
+
+  // 💾 on enregistre le nouveau jour
+  lastLesson = new Date().toISOString();
+  saveData();
+
+  updateFireUI();
+
+  // écran résultat
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("score-screen").classList.remove("hidden");
+
+  document.getElementById("final-score").textContent =
+    `Score: ${currentCards.length-errors.length}/${currentCards.length}`;
+
+  document.getElementById("final-score").insertAdjacentHTML(
+    "afterend",
+    `<p>💎 +${sessionGems} gemmes gagnées</p>`
+  );
+}
+
+function restartAll(){
+  currentCards=[...currentSet.cards];
+  currentIndex=0;
+  errors=[];
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("game-screen").classList.remove("hidden");
+  showCard();
+}
+
+function restartErrors(){
+  if(errors.length===0){ alert("Aucune erreur à rejouer !"); return; }
+  currentCards=[...errors];
+  currentIndex=0;
+  errors=[];
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("game-screen").classList.remove("hidden");
+  showCard();
+}
+
+function importSet(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const importedSet = JSON.parse(e.target.result);
+      sets.push(importedSet);
+      saveSets();
+      displaySets();
+      alert("✅ Set importé avec succès !");
+    }catch(err){ alert("❌ Erreur lors de l'import !"); }
+  };
+  reader.readAsText(file);
+  event.target.value="";
+}
+
+function exportAllSets(){
+  const blob = new Blob([JSON.stringify(sets,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download="all_sets.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("infoBtn").onclick = ()=>{
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById("info-screen").classList.remove("hidden");
+};
+document.addEventListener("keydown", (e) => {
+  const gameScreen = document.getElementById("game-screen");
+
+  // ❌ si pas dans le jeu → ne fait rien
+  if(gameScreen.classList.contains("hidden")) return;
+
+  // ❌ si tu écris dans un champ → ne fait rien
+  if(document.activeElement.tagName === "INPUT") return;
+
+  // 🎯 Espace = retourner carte
+  if(e.code === "Space"){
+    e.preventDefault();
+    flipCard();
+  }
+
+  // 🎯 F = Mauvais
+  if(e.key.toLowerCase() === "f"){
+    markAnswer(false);
+  }
+
+  // 🎯 J = Bon
+  if(e.key.toLowerCase() === "j"){
+    markAnswer(true);
+  }
+});
+let gems = parseInt(localStorage.getItem("gems")) || 0;
+let fireDays = parseInt(localStorage.getItem("fireDays")) || 0;
+let lastLesson = localStorage.getItem("lastLesson") || "";
+let gels = parseInt(localStorage.getItem("gels")) || 0;
+let streak = 0;
+let sessionGems = 0;
+function updateGemsUI(){
+  document.getElementById("gems-display").textContent = "💎 " + gems;
+}
+function updateFireUI(){
+  document.getElementById("fire-days").textContent = fireDays;
+}
+function updateGelUI(){
+  document.getElementById("gel-count").textContent = gels;
+}
+
+function buyGel(){
+
+  if(gels >= 2) return alert("Max 2 🧊");
+
+  if(gems < 1000) return alert("Pas assez de 💎");
+
+  gems -= 1000;
+
+  gels++;
+
+  saveData();
+
+  saveData();
+
+  updateGemsUI();
+
+  updateGelUI();
+
+}
+
+function buy2Gels(){
+
+  if(gels >= 1) return alert("Max 2 🧊");
+
+  if(gems < 1700) return alert("Pas assez de 💎");
+
+  gems -= 1700;
+
+  gels += 2;
+
+  if(gels > 2) gels = 2;
+
+  saveData();
+
+  saveData();
+
+  updateGemsUI();
+
+  updateGelUI();
+
+}
+
+function checkFireStreak(){
+  if(!lastLesson) return;
+
+  const today = new Date();
+  const last = new Date(lastLesson);
+
+  const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
+const now = Date.now();
+
+if(now < voyageProtectUntil){
+
+  return; // 🔥 protection active → rien ne se casse
+
+}
+
+ if(diffDays > 1){
+
+  let daysMissed = diffDays - 1;
+
+  // 🔥 si trop de jours → reset direct
+  if(daysMissed >= 3){
+    fireDays = 0;
+    saveData();
+    updateFireUI();
+    return;
+  }
+
+  if(gels >= daysMissed){
+    gels -= daysMissed;
+
+    saveData();
+    updateGelUI();
+
+    alert("🧊 " + daysMissed + " gel(s) utilisé(s) pour sauver ta streak !");
+    return;
+  }
+
+  fireDays = 0;
+  saveData();
+  updateFireUI();
+ }
+}
+function updateTheme(){
+  if(voyageMode){
+    document.body.style.background =
+      "url('https://i.postimg.cc/g2bdTP12/IMG-0873.jpg') center/cover no-repeat fixed";
+  } else {
+    document.body.style.background =
+      "linear-gradient(135deg, #a18cd1, #fbc2eb, #8fd3f4)";
+  }
+}
+function checkCode(){
+  const code = document.getElementById("secretCode").value;
+
+if(code === "&voyage&"){
+  voyageMode = !voyageMode;
+
+  if(voyageMode){
+
+    const now = Date.now();
+    voyageProtectUntil = now + (100 * 24 * 60 * 60 * 1000); // 100 jours
+    saveData();
+
+  } else {
+
+    // 🔥 enlève la protection quand tu désactives
+    voyageProtectUntil = 0;
+    saveData();
+
+  }
+
+  saveData();
+
+  alert(voyageMode ? "🌴 Mode voyage ACTIVÉ" : "❌ Mode voyage DÉSACTIVÉ");
+  return;
+}
+
+  alert("❌ Mauvais code");
+}
+async function generateWord(i) {
+  const set = sets[i];
+
+  const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+  const children = [];
+
+  // Titre
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: set.title,
+          bold: true,
+          size: 32,
+        }),
+      ],
+    })
+  );
+
+  children.push(new Paragraph(""));
+
+  // Cartes
+  set.cards.forEach(card => {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+  text: "Question: ",
+  underline: {}
+}),
+          new TextRun(card.question || ""),
+        ],
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+  text: "Réponse: ",
+  underline: {}
+}),
+          new TextRun(card.answer || ""),
+        ],
+      })
+    );
+
+    children.push(new Paragraph("")); // espace
+  });
+const doc = new docx.Document({
+  styles: {
+    default: {
+      document: {
+        run: {
+          font: "Dreaming Outloud Pro"
+        }
+      }
+    }
+  },
+  sections: [
+    {
+      children: children,
+    },
+  ],
+});
+
+  const blob = await Packer.toBlob(doc);
+
+  const file = new File([blob], set.title + ".docx", {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: set.title,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = set.title + ".docx";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+goHome();
+updateGemsUI();
+updateFireUI();
+updateGelUI();
+updateTheme();
+</script>
+</body>
+</html>
